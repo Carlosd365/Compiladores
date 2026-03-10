@@ -202,6 +202,41 @@ class NodoPrint(NodoAST):
         args = ", ".join(a.traducirRuby() for a in self.argumentos)
         return f"print {args}"
 
+    def generarCodigo(self):
+        codigo = []
+        for arg in self.argumentos:
+
+            codigo.append(arg.generarCodigo())
+
+            codigo.append("    push edx")
+            codigo.append("    push ecx")
+            codigo.append("    push ebx")
+            codigo.append("    push eax")
+
+            # calcular longitud
+            codigo.append("    mov ebx, eax")
+
+            codigo.append("len_loop:")
+            codigo.append("    cmp byte [eax], 0")
+            codigo.append("    jz len_fin")
+            codigo.append("    inc eax")
+            codigo.append("    jmp len_loop")
+
+            codigo.append("len_fin:")
+            codigo.append("    sub eax, ebx")
+
+            codigo.append("    mov edx, eax")
+            codigo.append("    pop ecx")
+            codigo.append("    mov ebx, 1")
+            codigo.append("    mov eax, 4")
+            codigo.append("    int 80h")
+
+            codigo.append("    pop ebx")
+            codigo.append("    pop ecx")
+            codigo.append("    pop edx")
+
+        return "\n".join(codigo)
+
 class NodoPrintln(NodoAST):
     # Nodo que representa la sentencia println
     def __init__(self, argumentos):
@@ -214,6 +249,55 @@ class NodoPrintln(NodoAST):
     def traducirRuby(self):
         args = ", ".join(a.traducirRuby() for a in self.argumentos)
         return f"puts {args}"
+
+    def generarCodigo(self):
+        codigo = []
+        for arg in self.argumentos:
+
+            codigo.append(arg.generarCodigo())
+
+            codigo.append("    push edx")
+            codigo.append("    push ecx")
+            codigo.append("    push ebx")
+            codigo.append("    push eax")
+
+            codigo.append("    mov ebx, eax")
+
+            codigo.append("len_loop2:")
+            codigo.append("    cmp byte [eax], 0")
+            codigo.append("    jz len_fin2")
+            codigo.append("    inc eax")
+            codigo.append("    jmp len_loop2")
+
+            codigo.append("len_fin2:")
+            codigo.append("    sub eax, ebx")
+
+            codigo.append("    mov edx, eax")
+            codigo.append("    pop ecx")
+            codigo.append("    mov ebx, 1")
+            codigo.append("    mov eax, 4")
+            codigo.append("    int 80h")
+
+            codigo.append("    pop ebx")
+            codigo.append("    pop ecx")
+            codigo.append("    pop edx")
+
+            # imprimir salto de linea
+            codigo.append("    push eax")
+            codigo.append("    mov eax, 0Ah")
+            codigo.append("    push eax")
+            codigo.append("    mov eax, esp")
+
+            codigo.append("    mov edx, 1")
+            codigo.append("    mov ecx, eax")
+            codigo.append("    mov ebx, 1")
+            codigo.append("    mov eax, 4")
+            codigo.append("    int 80h")
+
+            codigo.append("    pop eax")
+            codigo.append("    pop eax")
+
+        return "\n".join(codigo)
 
 class NodoPrintf(NodoAST):
     def __init__(self, argumentos):
