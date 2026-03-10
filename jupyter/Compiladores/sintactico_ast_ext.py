@@ -7,10 +7,10 @@ class NodoAST:
         raise NotImplementedError('Metodo traducirPy() no implementado en este Nodo.')
 
     def traducirRuby(self):
-        # Traduccion de C++ a Python
+        # Traduccion de C++ a Ruby
         raise NotImplementedError('Metodo traducirRuby() no implementado en este Nodo.')
 
-    def generarCodigo():
+    def generarCodigo(self):
         # Traducir de C++ ASSEMBLER
         raise NotImplementedError('Metodo generarCodigo() no implementado en este Nodo.')     
 
@@ -22,7 +22,7 @@ class NodoPrograma(NodoAST):
         self.main = main
 
     def generarCodigo(self):
-        codigo = ["section .text', 'global_start"]
+        codigo = ["section .text", "global_start"]
         data = ["section .bss"]
         # Generar codigo de todas las funciones
         for funcion in self.funciones:
@@ -61,7 +61,7 @@ class NodoFuncion(NodoAST):
         self.cuerpo = cuerpo
 
     def generarCodigo(self):
-        codigo = f'{self.nombre[1]:\n}'
+        codigo = f'{self.nombre[1]}:\n'
         if len(self.parametros) > 0:
             # Aqui guardamos en la pila el registro ax que usaremo
             for parametro in self.parametros:
@@ -162,7 +162,7 @@ class NodoIdentificador(NodoAST):
         return self.nombre[1]
 
     def generarCodigo(self):
-        return f'\n    nov eax, [{self.nombre[1]}]'
+        return f'\n    mov eax, [{self.nombre[1]}]'
 
 class NodoNumero(NodoAST):
     # Nodo que representa a un numero
@@ -176,7 +176,7 @@ class NodoNumero(NodoAST):
         return str(self.valor[1])
 
     def generarCodigo(self):
-        return f'\n    nov eax, [{self.valor[1]}]'
+        return f'\n    mov eax, [{self.valor[1]}]'
 
 class NodoCadena(NodoAST):
     # Nodo que representa a una cadena
@@ -200,7 +200,20 @@ class NodoPrint(NodoAST):
 
     def traducirRuby(self):
         args = ", ".join(a.traducirRuby() for a in self.argumentos)
-        return f"puts({args})"
+        return f"print {args}"
+
+class NodoPrintln(NodoAST):
+    # Nodo que representa la sentencia println
+    def __init__(self, argumentos):
+        self.argumentos = argumentos
+
+    def traducirPy(self):
+        args = ", ".join(a.traducirPy() for a in self.argumentos)
+        return f"print({args})"
+
+    def traducirRuby(self):
+        args = ", ".join(a.traducirRuby() for a in self.argumentos)
+        return f"puts {args}"
 
 class NodoPrintf(NodoAST):
     def __init__(self, argumentos):
@@ -238,6 +251,57 @@ class NodoPrintf(NodoAST):
         args = ", ".join(a.traducirRuby() for a in self.argumentos)
         return f"printf({args})"
 
+class NodoIf(NodoAST):
+    def __init__(self, condicion, cuerpo, sino=None):
+        self.condicion = condicion
+        self.cuerpo = cuerpo
+        self.sino = sino
+
+    def traducirPy(self):
+        cuerpo = "\n    ".join(c.traducirPy() for c in self.cuerpo)
+        codigo = f"if {self.condicion.traducirPy()}:\n    {cuerpo}"
+        if self.sino:
+            sino = "\n    ".join(c.traducirPy() for c in self.sino)
+            codigo += f"\nelse:\n    {sino}"
+        return codigo
+    
+    def traducirRuby(self):
+        cuerpo = "\n  ".join(c.traducirRuby() for c in self.cuerpo)
+        codigo = f"if {self.condicion.traducirRuby()}\n  {cuerpo}"
+        if self.sino:
+            sino = "\n  ".join(c.traducirRuby() for c in self.sino)
+            codigo += f"\nelse\n  {sino}\nend"
+        else:
+            codigo += "\nend"
+        return codigo
+
+class NodoWhile(NodoAST):
+    def __init__(self, condicion, cuerpo):
+        self.condicion = condicion
+        self.cuerpo = cuerpo
+
+    def traducirPy(self):
+        cuerpo = "\n    ".join(c.traducirPy() for c in self.cuerpo)
+        return f"while {self.condicion.traducirPy()}:\n    {cuerpo}"
+    
+    def traducirRuby(self):
+        cuerpo = "\n  ".join(c.traducirRuby() for c in self.cuerpo)
+        return f"while {self.condicion.traducirRuby()}\n  {cuerpo}\nend"
+    
+class NodoFor(NodoAST):
+    def __init__(self, init, condicion, incremento, cuerpo):
+        self.init = init
+        self.condicion = condicion
+        self.incremento = incremento
+        self.cuerpo = cuerpo
+
+    def traducirPy(self):
+        cuerpo = "\n    ".join(c.traducirPy() for c in self.cuerpo)
+        return f"# for convertido\n{self.init.traducirPy()}\nwhile {self.condicion.traducirPy()}:\n    {cuerpo}\n    {self.incremento.traducirPy()}"
+    
+    def traducirRuby(self):
+        cuerpo = "\n  ".join(c.traducirRuby() for c in self.cuerpo)
+        return f"# for convertido\n{self.init.traducirRuby()}\nwhile {self.condicion.traducirRuby()}\n  {cuerpo}\n  {self.incremento.traducirRuby()}\nend"
 
 # Analizador sintactico
 class Parser:
@@ -298,6 +362,16 @@ class Parser:
                 instrucciones.append(self.sentencia_print())
             elif self.obtener_token_actual()[1] == 'printf':
                 instrucciones.append(self.sentencia_printf())
+            elif self.obtener_token_actual()[1] == 'println':
+                instrucciones.append(self.sentencia_println())
+            elif self.obtener_token_actual()[1] == 'if':
+                instrucciones.append(self.sentencia_if())
+
+            elif self.obtener_token_actual()[1] == 'while':
+                instrucciones.append(self.sentencia_while())
+
+            elif self.obtener_token_actual()[1] == 'for':
+                instrucciones.append(self.sentencia_for())
             else:
                 instrucciones.append(self.asignacion())
         return instrucciones
@@ -384,3 +458,46 @@ class Parser:
         self.coincidir('DELIMITER')   
         self.coincidir('DELIMITER')   
         return NodoPrintf(argumentos)
+    
+    def sentencia_println(self):
+        self.coincidir('KEYWORD')
+        self.coincidir('DELIMITER')
+        argumentos = []
+        if self.obtener_token_actual() and self.obtener_token_actual()[1] != ')':
+            argumentos = self.llamadaFuncion()
+        self.coincidir('DELIMITER')
+        self.coincidir('DELIMITER')
+        return NodoPrintln(argumentos)
+    
+    def sentencia_if(self):
+        self.coincidir('KEYWORD')  
+        condicion = self.expresion()
+        self.coincidir('DELIMITER')  
+        cuerpo = self.cuerpo()
+        self.coincidir('DELIMITER')  
+        sino = None
+        if self.obtener_token_actual() and self.obtener_token_actual()[1] == 'else':
+            self.coincidir('KEYWORD')
+            self.coincidir('DELIMITER')
+            sino = self.cuerpo()
+            self.coincidir('DELIMITER')
+        return NodoIf(condicion, cuerpo, sino)
+
+    def sentencia_while(self):
+        self.coincidir('KEYWORD')
+        condicion = self.expresion()
+        self.coincidir('DELIMITER')
+        cuerpo = self.cuerpo()
+        self.coincidir('DELIMITER')
+        return NodoWhile(condicion, cuerpo)
+
+    def sentencia_for(self):
+        self.coincidir('KEYWORD')
+        self.coincidir('DELIMITER')
+        init = self.asignacion()
+        condicion = self.expresion()
+        incremento = self.expresion()
+        self.coincidir('DELIMITER')
+        cuerpo = self.cuerpo()
+        self.coincidir('DELIMITER')
+        return NodoFor(init, condicion, incremento, cuerpo)
