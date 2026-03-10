@@ -3,7 +3,7 @@ import re
 # === Análisis Léxico ===
 # Definir los patrones para los diferentes tipos de tokens
 token_patron = {
-    "KEYWORD": r'\b(if|else|while|return|int|float|void|print|printf)\b',
+    "KEYWORD": r'\b(if|else|while|return|int|float|void|print|printf|println|for)\b',
     "STRING": r'"([^"\\]|\\.)*"',
     "IDENTIFIER": r'\b[a-zA-Z_][a-zA-Z0-9_]*\b',
     "NUMBER": r'\b\d+(\.\d+)?\b',
